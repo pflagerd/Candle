@@ -42,7 +42,7 @@ Please read GRBL wiki:
 To build Experimental:
 
 - Install QT5 & other pre-requirements
-  `sudo apt-get install -y g++ make qt5-default qtscript5-dev qttools5-dev qttools5-dev-tools libqt5serialport5-dev libqt5opengl5-dev qtmultimedia5-dev libqt5multimediawidgets5 libqt5multimedia5-plugins libqt5multimedia5 libqt5designercomponents5 libqt5designer5 qtcreator`  
+  `sudo apt-get install -y cmake g++ make qt5-default qtscript5-dev qttools5-dev qttools5-dev-tools libqt5serialport5-dev libqt5opengl5-dev qtmultimedia5-dev libqt5multimediawidgets5 libqt5multimedia5-plugins libqt5multimedia5 libqt5designercomponents5 libqt5designer5 qtcreator`  
 
 - Clone Candle
   ```git clone https://github.com/pflagerd/Candle.git```
