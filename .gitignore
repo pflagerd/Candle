@@ -51,9 +51,6 @@ build-*
 # Binaries
 bin/*
 
-# Idea
-.idea
-
 # VS
 .vs
 /src/debug
