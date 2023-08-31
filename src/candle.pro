@@ -37,15 +37,17 @@ DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
 TRANSLATIONS += translations/candle_en.ts translations/candle_ru.ts translations/candle_es.ts translations/candle_fr.ts translations/candle_pt.ts
 
-SOURCES += main.cpp\
-        frmmain.cpp \
-    frmsettings.cpp \
+SOURCES += \
     frmabout.cpp \
+    frmmain.cpp \
+    frmsettings.cpp \
+    main.cpp \
     drawers/gcodedrawer.cpp \
     drawers/heightmapborderdrawer.cpp \
     drawers/heightmapgriddrawer.cpp \
     drawers/heightmapinterpolationdrawer.cpp \
     drawers/origindrawer.cpp \
+    drawers/selectiondrawer.cpp \
     drawers/shaderdrawable.cpp \
     drawers/tooldrawer.cpp \
     parser/arcproperties.cpp \
@@ -58,24 +60,25 @@ SOURCES += main.cpp\
     tables/heightmaptablemodel.cpp \
     widgets/colorpicker.cpp \
     widgets/combobox.cpp \
+    widgets/comboboxkey.cpp \
+    widgets/glwidget.cpp \
     widgets/groupbox.cpp \
     widgets/scrollarea.cpp \
-    widgets/styledtoolbutton.cpp \
-    widgets/widget.cpp \
-    widgets/glwidget.cpp \
     widgets/slider.cpp \
     widgets/sliderbox.cpp \
-    drawers/selectiondrawer.cpp \
-    widgets/comboboxkey.cpp
+    widgets/styledtoolbutton.cpp \
+    widgets/widget.cpp
 
-HEADERS  += frmmain.h \
-    frmsettings.h \
+HEADERS +=\
     frmabout.h \
+    frmmain.h \
+    frmsettings.h \
     drawers/gcodedrawer.h \
     drawers/heightmapborderdrawer.h \
     drawers/heightmapgriddrawer.h \
     drawers/heightmapinterpolationdrawer.h \
     drawers/origindrawer.h \
+    drawers/selectiondrawer.h \
     drawers/shaderdrawable.h \
     drawers/tooldrawer.h \
     parser/arcproperties.h \
@@ -90,19 +93,19 @@ HEADERS  += frmmain.h \
     utils/util.h \
     widgets/colorpicker.h \
     widgets/combobox.h \
+    widgets/comboboxkey.h \
+    widgets/glwidget.h \
     widgets/groupbox.h \
     widgets/scrollarea.h \
-    widgets/styledtoolbutton.h \
-    widgets/widget.h \
-    widgets/glwidget.h \
     widgets/slider.h \
     widgets/sliderbox.h \
-    drawers/selectiondrawer.h \
-    widgets/comboboxkey.h
+    widgets/styledtoolbutton.h \
+    widgets/widget.h
 
-FORMS    += frmmain.ui \
-    frmsettings.ui \
+FORMS += \
     frmabout.ui \
+    frmmain.ui \
+    frmsettings.ui \
     widgets/sliderbox.ui
 
 DEFINES += _USE_MATH_DEFINES
