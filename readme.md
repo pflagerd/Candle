@@ -1,4 +1,4 @@
-Candle
+candle
 -----------
 GRBL controller application with G-Code visualizer written in Qt.
 
@@ -8,7 +8,7 @@ Supported functions:
 * Loading, editing, saving and sending of G-code files to cnc-machine.
 * Visualizing G-code files.
 
-System requirements for running "Candle":
+System requirements for running "candle":
 -------------------
 * Windows/Linux
 * CPU with SSE2 instruction set support

@@ -19,22 +19,22 @@
 
 int main(int argc, char *argv[])
 {
-#ifdef UNIX
-    bool styleOverrided = false;
-    for (int i = 0; i < argc; i++) if (QString(argv[i]).toUpper() == "-STYLE") {
-        styleOverrided = true;
-        break;
-    }
-#endif
+    #ifdef UNIX
+        bool styleOverrided = false;
+        for (int i = 0; i < argc; i++) if (QString(argv[i]).toUpper() == "-STYLE") {
+            styleOverrided = true;
+            break;
+        }
+    #endif
 
     QApplication a(argc, argv);
 
 //    QFontDatabase::addApplicationFont(":/fonts/segoeui.ttf");
 //    QFontDatabase::addApplicationFont(":/fonts/tahoma.ttf");
 
-#ifdef GLES
-    QFontDatabase::addApplicationFont(":/fonts/Ubuntu-R.ttf");
-#endif
+    #ifdef GLES
+        QFontDatabase::addApplicationFont(":/fonts/Ubuntu-R.ttf");
+    #endif
 
     QGLFormat glf = QGLFormat::defaultFormat();
     glf.setSampleBuffers(true);

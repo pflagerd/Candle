@@ -17,6 +17,7 @@ win32: {
 
 unix:!macx {
     DEFINES += UNIX #GL_GLEXT_PROTOTYPES
+    QMAKE_CXXFLAGS_DEBUG += -g3 -pg -O0
     QMAKE_LFLAGS += "-Wl,-rpath,\'\$$ORIGIN/libs\'"
 }
 
