@@ -1212,7 +1212,7 @@ QLabel[overrided=&quot;false&quot;] {
   <widget class="QDockWidget" name="dockDevice">
    <property name="minimumSize">
     <size>
-     <width>350</width>
+     <width>400</width>
      <height>178</height>
     </size>
    </property>

@@ -36,6 +36,8 @@
 #include "ui_frmmain.h"
 #include "ui_frmsettings.h"
 
+#include <iostream>
+
 frmMain::frmMain(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::frmMain)
@@ -543,6 +545,8 @@ void frmMain::loadSettings()
         // Adjust width 
     int w = qMax(ui->dockDevice->widget()->sizeHint().width(), 
         ui->dockModification->widget()->sizeHint().width());
+    std::cout << "ui->dockDevice->widget()->sizeHint().width() == " << ui->dockDevice->widget()->sizeHint().width() << std::endl;
+    std::cout << "ui->dockModification->widget()->sizeHint().width()) == " << ui->dockModification->widget()->sizeHint().width() << std::endl;
     ui->dockDevice->setFixedWidth(w);
     ui->dockModification->setFixedWidth(w);
 
