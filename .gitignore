@@ -64,8 +64,6 @@ bin/*
 /src/Candle_resource.rc
 /src/ui_*
 
-
-#dpp#######################################
 *.o
 src/*.o
 Makefile

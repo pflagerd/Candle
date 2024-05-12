@@ -34,11 +34,15 @@
 #include <QMimeData>
 #include "frmmain.h"
 #include "ui_frmmain.h"
+#include "ui_frmsettings.h"
+
+#include <iostream>
 
 frmMain::frmMain(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::frmMain)
 {
+    // Initializing variables
     m_status << "Unknown"
              << "Idle"
              << "Alarm"
@@ -84,6 +88,35 @@ frmMain::frmMain(QWidget *parent) :
                        << "white"
                        << "black";
 
+    m_fileChanged = false;
+    m_heightMapChanged = false;
+   
+    m_storedX = 0;
+    m_storedY = 0;
+    m_storedZ = 0;
+   
+    m_settingZeroXY = false;
+    m_settingZeroZ = false;
+    m_homing = false;
+    m_updateSpindleSpeed = false;
+    m_updateParserStatus = false;
+    m_updateFeed = false;
+
+    m_reseting = false;
+    m_resetCompleted = true;
+    m_aborting = false;
+    m_statusReceived = false;
+
+    m_processingFile = false;
+    m_transferCompleted = false;
+    m_fileEndSent = false;
+
+    m_keyPressed = false;
+    m_jogBlock = false;
+
+    m_spindleCW = true;
+    m_spindleCommandSpeed = false;
+
     // Loading settings
     m_settingsFileName = qApp->applicationDirPath() + "/settings.ini";
     preloadSettings();
@@ -111,6 +144,19 @@ frmMain::frmMain(QWidget *parent) :
     m_currentModel = &m_programModel;
     m_transferCompleted = true;
 
+    // Dock widgets
+    setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
+    setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
+    setCorner(Qt::TopRightCorner, Qt::RightDockWidgetArea);
+    setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea);
+
+    connect(ui->dockDevice, &QDockWidget::topLevelChanged, this, &frmMain::onDockTopLevelChanged);
+    connect(ui->dockModification, &QDockWidget::topLevelChanged, this, &frmMain::onDockTopLevelChanged);
+    connect(ui->dockVisualizer, &QDockWidget::topLevelChanged, this, &frmMain::onDockTopLevelChanged);
+    connect(ui->dockConsole, &QDockWidget::topLevelChanged, this, &frmMain::onDockTopLevelChanged);
+
+    ui->widgetHeightmapSettings->setVisible(false);
+
     ui->cmdXMinus->setBackColor(QColor(153, 180, 209));
     ui->cmdXPlus->setBackColor(ui->cmdXMinus->backColor());
     ui->cmdYMinus->setBackColor(ui->cmdXMinus->backColor());
@@ -129,8 +175,10 @@ frmMain::frmMain(QWidget *parent) :
 
     ui->cboJogStep->setValidator(new QDoubleValidator(0, 10000, 2));
     ui->cboJogFeed->setValidator(new QIntValidator(0, 100000));
-    connect(ui->cboJogStep, &ComboBoxKey::currentTextChanged, [=] (QString) {updateJogTitle();});
-    connect(ui->cboJogFeed, &ComboBoxKey::currentTextChanged, [=] (QString) {updateJogTitle();});
+    // connect(ui->cboJogStep, &ComboBoxKey::currentTextChanged, [=] (QString) {updateJogTitle();});
+    // connect(ui->cboJogFeed, &ComboBoxKey::currentTextChanged, [=] (QString) {updateJogTitle();});
+    connect(ui->cboJogStep, &ComboBoxKey::currentTextChanged, this, &frmMain::updateJogTitle);
+    connect(ui->cboJogFeed, &ComboBoxKey::currentTextChanged, this, &frmMain::updateJogTitle);
 
     // Prepare "Send"-button
     ui->cmdFileSend->setMinimumWidth(qMax(ui->cmdFileSend->width(), ui->cmdFileOpen->width()));
@@ -152,12 +200,14 @@ frmMain::frmMain(QWidget *parent) :
     ui->slbFeedOverride->setTitle(tr("Feed rate:"));
     ui->slbFeedOverride->setSuffix("%");
     connect(ui->slbFeedOverride, SIGNAL(toggled(bool)), this, SLOT(onOverridingToggled(bool)));
-    connect(ui->slbFeedOverride, &SliderBox::toggled, [=] {
-        updateProgramEstimatedTime(m_currentDrawer->viewParser()->getLineSegmentList());
-    });
-    connect(ui->slbFeedOverride, &SliderBox::valueChanged, [=] {
-        updateProgramEstimatedTime(m_currentDrawer->viewParser()->getLineSegmentList());
-    });
+    // connect(ui->slbFeedOverride, &SliderBox::toggled, [=] {
+    //     updateProgramEstimatedTime(m_currentDrawer->viewParser()->getLineSegmentList());
+    // });
+    // connect(ui->slbFeedOverride, &SliderBox::valueChanged, [=] {
+    //     updateProgramEstimatedTime(m_currentDrawer->viewParser()->getLineSegmentList());
+    // });
+    connect(ui->slbFeedOverride, &SliderBox::toggled, this, &frmMain::onOverrideChanged);
+    connect(ui->slbFeedOverride, &SliderBox::valueChanged, this, &frmMain::onOverrideChanged);
 
     ui->slbRapidOverride->setRatio(50);
     ui->slbRapidOverride->setMinimum(25);
@@ -166,12 +216,14 @@ frmMain::frmMain(QWidget *parent) :
     ui->slbRapidOverride->setTitle(tr("Rapid speed:"));
     ui->slbRapidOverride->setSuffix("%");
     connect(ui->slbRapidOverride, SIGNAL(toggled(bool)), this, SLOT(onOverridingToggled(bool)));
-    connect(ui->slbRapidOverride, &SliderBox::toggled, [=] {
-        updateProgramEstimatedTime(m_currentDrawer->viewParser()->getLineSegmentList());
-    });
-    connect(ui->slbRapidOverride, &SliderBox::valueChanged, [=] {
-        updateProgramEstimatedTime(m_currentDrawer->viewParser()->getLineSegmentList());
-    });
+    // connect(ui->slbRapidOverride, &SliderBox::toggled, [=] {
+    //     updateProgramEstimatedTime(m_currentDrawer->viewParser()->getLineSegmentList());
+    // });
+    // connect(ui->slbRapidOverride, &SliderBox::valueChanged, [=] {
+    //     updateProgramEstimatedTime(m_currentDrawer->viewParser()->getLineSegmentList());
+    // });
+    connect(ui->slbRapidOverride, &SliderBox::toggled, this, &frmMain::onOverrideChanged);
+    connect(ui->slbRapidOverride, &SliderBox::valueChanged, this, &frmMain::onOverrideChanged);   
 
     ui->slbSpindleOverride->setRatio(1);
     ui->slbSpindleOverride->setMinimum(50);
@@ -225,8 +277,8 @@ frmMain::frmMain(QWidget *parent) :
     clearTable();
 
     // Console window handling
-    connect(ui->grpConsole, SIGNAL(resized(QSize)), this, SLOT(onConsoleResized(QSize)));
-    connect(ui->scrollAreaWidgetContents, SIGNAL(sizeChanged(QSize)), this, SLOT(onPanelsSizeChanged(QSize)));
+    // connect(ui->grpConsole, SIGNAL(resized(QSize)), this, SLOT(onConsoleResized(QSize)));
+    // connect(ui->scrollAreaWidgetContents, SIGNAL(sizeChanged(QSize)), this, SLOT(onPanelsSizeChanged(QSize)));
 
     m_senderErrorBox = new QMessageBox(QMessageBox::Warning, qApp->applicationDisplayName(), QString(),
                                        QMessageBox::Ignore | QMessageBox::Abort, this);
@@ -248,11 +300,13 @@ frmMain::frmMain(QWidget *parent) :
     ui->slbSpindle->setTitle(tr("Speed:"));
     ui->slbSpindle->setCheckable(false);
     ui->slbSpindle->setChecked(true);
-    connect(ui->slbSpindle, &SliderBox::valueUserChanged, [=] {m_updateSpindleSpeed = true;});
-    connect(ui->slbSpindle, &SliderBox::valueChanged, [=] {
-        if (!ui->grpSpindle->isChecked() && ui->cmdSpindle->isChecked())
-            ui->grpSpindle->setTitle(tr("Spindle") + QString(tr(" (%1)")).arg(ui->slbSpindle->value()));
-    });
+    // connect(ui->slbSpindle, &SliderBox::valueUserChanged, [=] {m_updateSpindleSpeed = true;});
+    // connect(ui->slbSpindle, &SliderBox::valueChanged, [=] {
+    //     if (!ui->grpSpindle->isChecked() && ui->cmdSpindle->isChecked())
+    //         ui->grpSpindle->setTitle(tr("Spindle") + QString(tr(" (%1)")).arg(ui->slbSpindle->value()));
+    // });
+    connect(ui->slbSpindle, &SliderBox::valueUserChanged, this, &frmMain::onSlbSpindleValueUserChanged);
+    connect(ui->slbSpindle, &SliderBox::valueChanged, this, &frmMain::onSlbSpindleValueChanged);
 
     // Setup serial port
     m_serialPort.setParity(QSerialPort::NoParity);
@@ -272,8 +326,8 @@ frmMain::frmMain(QWidget *parent) :
     ui->tblProgram->installEventFilter(this);
     ui->cboJogStep->installEventFilter(this);
     ui->cboJogFeed->installEventFilter(this);
-    ui->splitPanels->handle(1)->installEventFilter(this);
-    ui->splitPanels->installEventFilter(this);
+    // ui->splitPanels->handle(1)->installEventFilter(this);
+    // ui->splitPanels->installEventFilter(this);
 
     connect(&m_timerConnection, SIGNAL(timeout()), this, SLOT(onTimerConnection()));
     connect(&m_timerStateQuery, SIGNAL(timeout()), this, SLOT(onTimerStateQuery()));
@@ -375,7 +429,7 @@ void frmMain::loadSettings()
     m_settings->setPanelOverriding(set.value("panelOverridingVisible", true).toBool());
     m_settings->setPanelJog(set.value("panelJogVisible", true).toBool());
 
-    ui->grpConsole->setMinimumHeight(set.value("consoleMinHeight", 100).toInt());
+    // ui->grpConsole->setMinimumHeight(set.value("consoleMinHeight", 100).toInt());
 
     ui->chkAutoScroll->setChecked(set.value("autoScroll", false).toBool());
 
@@ -406,15 +460,17 @@ void frmMain::loadSettings()
 
     this->restoreGeometry(set.value("formGeometry", QByteArray()).toByteArray());
     m_settings->resize(set.value("formSettingsSize", m_settings->size()).toSize());
-    QByteArray splitterState = set.value("splitter", QByteArray()).toByteArray();
+    m_settings->ui->splitMain->restoreState(set.value("settingsSplitMain").toByteArray());
 
-    if (splitterState.length() == 0) {
-        ui->splitter->setStretchFactor(0, 1);
-        ui->splitter->setStretchFactor(1, 1);
-    } else ui->splitter->restoreState(splitterState);
+    // QByteArray splitterState = set.value("splitter", QByteArray()).toByteArray();
 
-    ui->chkAutoScroll->setVisible(ui->splitter->sizes()[1]);
-    resizeCheckBoxes();
+    // if (splitterState.length() == 0) {
+    //     ui->splitter->setStretchFactor(0, 1);
+    //     ui->splitter->setStretchFactor(1, 1);
+    // } else ui->splitter->restoreState(splitterState);
+
+    // ui->chkAutoScroll->setVisible(ui->splitter->sizes()[1]);
+    // resizeCheckBoxes();
 
     ui->cboCommand->setMinimumHeight(ui->cboCommand->height());
     ui->cmdClearConsole->setFixedHeight(ui->cboCommand->height());
@@ -463,8 +519,8 @@ void frmMain::loadSettings()
 
     // Update right panel width
     applySettings();
-    show();
-    ui->scrollArea->updateMinimumWidth();
+    // show();
+    // ui->scrollArea->updateMinimumWidth();
 
     // Restore panels state
     ui->grpUserCommands->setChecked(set.value("userCommandsPanel", true).toBool());
@@ -476,6 +532,23 @@ void frmMain::loadSettings()
     // Restore last commands list
     ui->cboCommand->addItems(set.value("recentCommands", QStringList()).toStringList());
     ui->cboCommand->setCurrentIndex(-1);
+
+    // Restore docks
+        // Normal window state
+    restoreState(set.value("formMainState").toByteArray());
+
+        // Maximized window state
+    show();
+    qApp->processEvents();    
+    restoreState(set.value("formMainState").toByteArray());
+
+        // Adjust width 
+    int w = qMax(ui->dockDevice->widget()->sizeHint().width(), 
+        ui->dockModification->widget()->sizeHint().width());
+    std::cout << "ui->dockDevice->widget()->sizeHint().width() == " << ui->dockDevice->widget()->sizeHint().width() << std::endl;
+    std::cout << "ui->dockModification->widget()->sizeHint().width()) == " << ui->dockModification->widget()->sizeHint().width() << std::endl;
+    ui->dockDevice->setFixedWidth(w);
+    ui->dockModification->setFixedWidth(w);
 
     m_settingsLoading = false;
 }
@@ -523,7 +596,8 @@ void frmMain::saveSettings()
     set.setValue("queryStateTime", m_settings->queryStateTime());
     set.setValue("autoScroll", ui->chkAutoScroll->isChecked());
     set.setValue("header", ui->tblProgram->horizontalHeader()->saveState());
-    set.setValue("splitter", ui->splitter->saveState());
+    // set.setValue("splitter", ui->splitter->saveState());
+    set.setValue("settingsSplitMain", m_settings->ui->splitMain->saveState());
     set.setValue("formGeometry", this->saveGeometry());
     set.setValue("formSettingsSize", m_settings->size());    
     set.setValue("userCommandsPanel", ui->grpUserCommands->isChecked());
@@ -548,7 +622,7 @@ void frmMain::saveSettings()
     set.setValue("panelOverridingVisible", m_settings->panelOverriding());
     set.setValue("panelJogVisible", m_settings->panelJog());
     set.setValue("fontSize", m_settings->fontSize());
-    set.setValue("consoleMinHeight", ui->grpConsole->minimumHeight());
+    // set.setValue("consoleMinHeight", ui->grpConsole->minimumHeight());
 
     set.setValue("feedOverride", ui->slbFeedOverride->isChecked());
     set.setValue("feedOverrideValue", ui->slbFeedOverride->value());
@@ -592,6 +666,8 @@ void frmMain::saveSettings()
 
     for (int i = 0; i < ui->cboCommand->count(); i++) list.append(ui->cboCommand->itemText(i));
     set.setValue("recentCommands", list);
+
+    set.setValue("formMainState", saveState());
 }
 
 bool frmMain::saveChanges(bool heightMapMode)
@@ -693,13 +769,14 @@ void frmMain::updateControlsState() {
     m_heightMapGridDrawer.setVisible(ui->chkHeightMapGridShow->isChecked() && m_heightMapMode);
     m_heightMapInterpolationDrawer.setVisible(ui->chkHeightMapInterpolationShow->isChecked() && m_heightMapMode);
 
-    ui->grpProgram->setTitle(m_heightMapMode ? tr("Heightmap") : tr("G-code program"));
+    // ui->grpProgram->setTitle(m_heightMapMode ? tr("Heightmap") : tr("G-code program"));
+    ui->grpProgram->setText(m_heightMapMode ? tr("Heightmap") : tr("G-code program"));
     ui->grpProgram->setProperty("overrided", m_heightMapMode);
     style()->unpolish(ui->grpProgram);
     ui->grpProgram->ensurePolished();
 
-    ui->grpHeightMapSettings->setVisible(m_heightMapMode);
-    ui->grpHeightMapSettings->setEnabled(!m_processingFile && !ui->chkKeyboardControl->isChecked());
+    // ui->grpHeightMapSettings->setVisible(m_heightMapMode);
+    // ui->grpHeightMapSettings->setEnabled(!m_processingFile && !ui->chkKeyboardControl->isChecked());
 
     ui->cboJogStep->setEditable(!ui->chkKeyboardControl->isChecked());
     ui->cboJogFeed->setEditable(!ui->chkKeyboardControl->isChecked());
@@ -707,7 +784,7 @@ void frmMain::updateControlsState() {
     ui->cboJogFeed->setStyleSheet(ui->cboJogStep->styleSheet());
 
     ui->chkTestMode->setVisible(!m_heightMapMode);
-    ui->chkAutoScroll->setVisible(ui->splitter->sizes()[1] && !m_heightMapMode);
+    // ui->chkAutoScroll->setVisible(ui->splitter->sizes()[1] && !m_heightMapMode);
 
     ui->tblHeightMap->setVisible(m_heightMapMode);
     ui->tblProgram->setVisible(!m_heightMapMode);
@@ -859,9 +936,9 @@ void frmMain::onSerialPortReadyRead()
             // Update machine coordinates
             static QRegExp mpx("MPos:([^,]*),([^,]*),([^,^>^|]*)");
             if (mpx.indexIn(data) != -1) {
-                ui->txtMPosX->setText(mpx.cap(1));
-                ui->txtMPosY->setText(mpx.cap(2));
-                ui->txtMPosZ->setText(mpx.cap(3));
+                ui->txtMPosX->setValue(mpx.cap(1).toDouble());
+                ui->txtMPosY->setValue(mpx.cap(2).toDouble());
+                ui->txtMPosZ->setValue(mpx.cap(3).toDouble());
             }
 
             // Status
@@ -962,9 +1039,9 @@ void frmMain::onSerialPortReadyRead()
                             z = sNan;
                             grblReset();
                         } else {
-                            x = ui->txtMPosX->text().toDouble();
-                            y = ui->txtMPosY->text().toDouble();
-                            z = ui->txtMPosZ->text().toDouble();
+                            x = ui->txtMPosX->value();
+                            y = ui->txtMPosY->value();
+                            z = ui->txtMPosZ->value();
                         }
                         break;
                     }
@@ -982,16 +1059,22 @@ void frmMain::onSerialPortReadyRead()
 
             // Update work coordinates
             int prec = m_settings->units() == 0 ? 3 : 4;
-            ui->txtWPosX->setText(QString::number(ui->txtMPosX->text().toDouble() - workOffset.x(), 'f', prec));
-            ui->txtWPosY->setText(QString::number(ui->txtMPosY->text().toDouble() - workOffset.y(), 'f', prec));
-            ui->txtWPosZ->setText(QString::number(ui->txtMPosZ->text().toDouble() - workOffset.z(), 'f', prec));
+            ui->txtWPosX->setDecimals(prec);
+            ui->txtWPosY->setDecimals(prec);
+            ui->txtWPosZ->setDecimals(prec);
+            ui->txtWPosX->setValue(ui->txtMPosX->value() - workOffset.x());
+            ui->txtWPosY->setValue(ui->txtMPosY->value() - workOffset.y());
+            ui->txtWPosZ->setValue(ui->txtMPosZ->value() - workOffset.z());
+            // ui->txtWPosX->setText(QString::number(ui->txtMPosX->text().toDouble() - workOffset.x(), 'f', prec));
+            // ui->txtWPosY->setText(QString::number(ui->txtMPosY->text().toDouble() - workOffset.y(), 'f', prec));
+            // ui->txtWPosZ->setText(QString::number(ui->txtMPosZ->text().toDouble() - workOffset.z(), 'f', prec));
 
             // Update tool position
             QVector3D toolPosition;
             if (!(status == CHECK && m_fileProcessedCommandIndex < m_currentModel->rowCount() - 1)) {
-                toolPosition = QVector3D(toMetric(ui->txtWPosX->text().toDouble()),
-                                         toMetric(ui->txtWPosY->text().toDouble()),
-                                         toMetric(ui->txtWPosZ->text().toDouble()));
+                toolPosition = QVector3D(toMetric(ui->txtWPosX->value()),
+                                         toMetric(ui->txtWPosY->value()),
+                                         toMetric(ui->txtWPosZ->value()));
                 m_toolDrawer.setToolPosition(m_codeDrawer->getIgnoreZ() ? QVector3D(toolPosition.x(), toolPosition.y(), 0) : toolPosition);
             }
 
@@ -1187,7 +1270,8 @@ void frmMain::onSerialPortReadyRead()
                             z -= firstZ;
 
                             // Calculate table indexes
-                            int row = trunc(m_probeIndex / m_heightMapModel.columnCount());
+                            // int row = trunc(m_probeIndex / m_heightMapModel.columnCount());
+                            int row = (m_probeIndex / m_heightMapModel.columnCount());
                             int column = m_probeIndex - row * m_heightMapModel.columnCount();
                             if (row % 2) column = m_heightMapModel.columnCount() - 1 - column;
 
@@ -1208,7 +1292,8 @@ void frmMain::onSerialPortReadyRead()
                     // Add response to console
                     if (tb.isValid() && tb.text() == ca.command) {
 
-                        bool scrolledDown = ui->txtConsole->verticalScrollBar()->value() == ui->txtConsole->verticalScrollBar()->maximum();
+                        bool scrolledDown = ui->txtConsole->verticalScrollBar()->value() 
+                            == ui->txtConsole->verticalScrollBar()->maximum();
 
                         // Update text block numbers
                         int blocksAdded = response.count("; ");
@@ -1223,7 +1308,8 @@ void frmMain::onSerialPortReadyRead()
                         tc.insertText(" < " + QString(response).replace("; ", "\r\n"));
                         tc.endEditBlock();
 
-                        if (scrolledDown) ui->txtConsole->verticalScrollBar()->setValue(ui->txtConsole->verticalScrollBar()->maximum());
+                        if (scrolledDown) ui->txtConsole->verticalScrollBar()->setValue(
+                            ui->txtConsole->verticalScrollBar()->maximum());
                     }
 
                     // Check queue
@@ -1451,7 +1537,7 @@ void frmMain::showEvent(QShowEvent *se)
 
     ui->glwVisualizer->setUpdatesEnabled(true);
 
-    resizeCheckBoxes();
+    // resizeCheckBoxes();
 }
 
 void frmMain::hideEvent(QHideEvent *he)
@@ -1466,8 +1552,11 @@ void frmMain::resizeEvent(QResizeEvent *re)
     Q_UNUSED(re)
 
     placeVisualizerButtons();
-    resizeCheckBoxes();
+    // resizeCheckBoxes();
     resizeTableHeightMapSections();
+
+    ui->dockDevice->setMinimumHeight(re->size().height() / 3);
+    ui->dockModification->setMinimumHeight(re->size().height() / 3);
 }
 
 void frmMain::resizeTableHeightMapSections()
@@ -1479,47 +1568,47 @@ void frmMain::resizeTableHeightMapSections()
     }
 }
 
-void frmMain::resizeCheckBoxes()
-{
-    static int widthCheckMode = ui->chkTestMode->sizeHint().width();
-    static int widthAutoScroll = ui->chkAutoScroll->sizeHint().width();
+// void frmMain::resizeCheckBoxes()
+// {
+//     static int widthCheckMode = ui->chkTestMode->sizeHint().width();
+//     static int widthAutoScroll = ui->chkAutoScroll->sizeHint().width();
 
-    // Transform checkboxes
+//     // Transform checkboxes
 
-    this->setUpdatesEnabled(false);
+//     this->setUpdatesEnabled(false);
 
-    updateLayouts();
+//     updateLayouts();
 
-    if (ui->chkTestMode->sizeHint().width() > ui->chkTestMode->width()) {
-        widthCheckMode = ui->chkTestMode->sizeHint().width();
-        ui->chkTestMode->setText(tr("Check"));
-        ui->chkTestMode->setMinimumWidth(ui->chkTestMode->sizeHint().width());
-        updateLayouts();
-    }
+//     if (ui->chkTestMode->sizeHint().width() > ui->chkTestMode->width()) {
+//         widthCheckMode = ui->chkTestMode->sizeHint().width();
+//         ui->chkTestMode->setText(tr("Check"));
+//         ui->chkTestMode->setMinimumWidth(ui->chkTestMode->sizeHint().width());
+//         updateLayouts();
+//     }
 
-    if (ui->chkAutoScroll->sizeHint().width() > ui->chkAutoScroll->width()
-            && ui->chkTestMode->text() == tr("Check")) {
-        widthAutoScroll = ui->chkAutoScroll->sizeHint().width();
-        ui->chkAutoScroll->setText(tr("Scroll"));
-        ui->chkAutoScroll->setMinimumWidth(ui->chkAutoScroll->sizeHint().width());
-        updateLayouts();
-    }
+//     if (ui->chkAutoScroll->sizeHint().width() > ui->chkAutoScroll->width()
+//             && ui->chkTestMode->text() == tr("Check")) {
+//         widthAutoScroll = ui->chkAutoScroll->sizeHint().width();
+//         ui->chkAutoScroll->setText(tr("Scroll"));
+//         ui->chkAutoScroll->setMinimumWidth(ui->chkAutoScroll->sizeHint().width());
+//         updateLayouts();
+//     }
 
-    if (ui->spacerBot->geometry().width() + ui->chkAutoScroll->sizeHint().width()
-            - ui->spacerBot->sizeHint().width() > widthAutoScroll && ui->chkAutoScroll->text() == tr("Scroll")) {
-        ui->chkAutoScroll->setText(tr("Autoscroll"));
-        updateLayouts();
-    }
+//     if (ui->spacerBot->geometry().width() + ui->chkAutoScroll->sizeHint().width()
+//             - ui->spacerBot->sizeHint().width() > widthAutoScroll && ui->chkAutoScroll->text() == tr("Scroll")) {
+//         ui->chkAutoScroll->setText(tr("Autoscroll"));
+//         updateLayouts();
+//     }
 
-    if (ui->spacerBot->geometry().width() + ui->chkTestMode->sizeHint().width()
-            - ui->spacerBot->sizeHint().width() > widthCheckMode && ui->chkTestMode->text() == tr("Check")) {
-        ui->chkTestMode->setText(tr("Check mode"));
-        updateLayouts();
-    }
+//     if (ui->spacerBot->geometry().width() + ui->chkTestMode->sizeHint().width()
+//             - ui->spacerBot->sizeHint().width() > widthCheckMode && ui->chkTestMode->text() == tr("Check")) {
+//         ui->chkTestMode->setText(tr("Check mode"));
+//         updateLayouts();
+//     }
 
-    this->setUpdatesEnabled(true);
-    this->repaint();
-}
+//     this->setUpdatesEnabled(true);
+//     this->repaint();
+// }
 
 void frmMain::timerEvent(QTimerEvent *te)
 {
@@ -1596,6 +1685,19 @@ void frmMain::dropEvent(QDropEvent *de)
         updateRecentFilesMenu();
         loadHeightMap(fileName);
     }
+}
+
+QMenu *frmMain::createPopupMenu()
+{
+    QMenu *menu = QMainWindow::createPopupMenu();
+
+    foreach (QAction *a, menu->actions()) {
+        if (a->text().contains("_spacer")) {
+            a->setVisible(false);
+        }
+    } 
+
+    return menu;
 }
 
 void frmMain::on_actFileExit_triggered()
@@ -1979,6 +2081,22 @@ void frmMain::onActSendFromLineTriggered()
     sendNextFileCommands();
 }
 
+void frmMain::onSlbSpindleValueUserChanged()
+{
+    m_updateSpindleSpeed = true;
+}
+
+void frmMain::onSlbSpindleValueChanged()
+{
+    if (!ui->grpSpindle->isChecked() && ui->cmdSpindle->isChecked())
+        ui->grpSpindle->setTitle(tr("Spindle") + QString(tr(" (%1)")).arg(ui->slbSpindle->value()));
+}
+
+void frmMain::onDockTopLevelChanged(bool topLevel)
+{
+    static_cast<QWidget*>(sender())->setStyleSheet("");
+}
+
 void frmMain::on_cmdFileAbort_clicked()
 {
     m_aborting = true;
@@ -2008,12 +2126,12 @@ void frmMain::storeOffsets()
 void frmMain::restoreOffsets()
 {
     // Still have pre-reset working position
-    sendCommand(QString("G21G53G90X%1Y%2Z%3").arg(toMetric(ui->txtMPosX->text().toDouble()))
-                                       .arg(toMetric(ui->txtMPosY->text().toDouble()))
-                                       .arg(toMetric(ui->txtMPosZ->text().toDouble())), -1, m_settings->showUICommands());
-    sendCommand(QString("G21G92X%1Y%2Z%3").arg(toMetric(ui->txtWPosX->text().toDouble()))
-                                       .arg(toMetric(ui->txtWPosY->text().toDouble()))
-                                       .arg(toMetric(ui->txtWPosZ->text().toDouble())), -1, m_settings->showUICommands());
+    sendCommand(QString("G21G53G90X%1Y%2Z%3").arg(toMetric(ui->txtMPosX->value()))
+                                       .arg(toMetric(ui->txtMPosY->value()))
+                                       .arg(toMetric(ui->txtMPosZ->value())), -1, m_settings->showUICommands());
+    sendCommand(QString("G21G92X%1Y%2Z%3").arg(toMetric(ui->txtWPosX->value()))
+                                       .arg(toMetric(ui->txtWPosY->value()))
+                                       .arg(toMetric(ui->txtWPosZ->value())), -1, m_settings->showUICommands());
 }
 
 void frmMain::sendNextFileCommands() {
@@ -2109,7 +2227,7 @@ void frmMain::onTableCurrentChanged(QModelIndex idx1, QModelIndex idx2)
 
     // Update selection marker
     int line = m_currentModel->data(m_currentModel->index(idx1.row(), 4)).toInt();
-    if (line > 0 && !lineIndexes.at(line).isEmpty()) {
+    if (line > 0 && line < lineIndexes.count() && !lineIndexes.at(line).isEmpty()) {
         QVector3D pos = list.at(lineIndexes.at(line).last())->getEnd();
         m_selectionDrawer.setEndPosition(m_codeDrawer->getIgnoreZ() ? QVector3D(pos.x(), pos.y(), 0) : pos);
     } else {
@@ -2269,9 +2387,11 @@ void frmMain::applySettings() {
         Util::invertButtonIconColors(ui->cmdTop);
     }
 
-    ui->cboCommand->setMinimumHeight(ui->cboCommand->height());
-    ui->cmdClearConsole->setFixedHeight(ui->cboCommand->height());
-    ui->cmdCommandSend->setFixedHeight(ui->cboCommand->height());
+    int h = ui->cmdFileOpen->sizeHint().height();
+    QSize s(h, h);
+    ui->cboCommand->setMinimumHeight(h);
+    ui->cmdClearConsole->setFixedSize(s);
+    ui->cmdCommandSend->setFixedSize(s);
 
     foreach (StyledToolButton* button, this->findChildren<StyledToolButton*>(QRegExp("cmdUser\\d"))) {
         button->setToolTip(m_settings->userCommands(button->objectName().right(1).toInt()));
@@ -2398,9 +2518,9 @@ void frmMain::on_cmdRestoreOrigin_clicked()
 {
     // Restore offset
     sendCommand(QString("G21"), -1, m_settings->showUICommands());
-    sendCommand(QString("G53G90G0X%1Y%2Z%3").arg(toMetric(ui->txtMPosX->text().toDouble()))
-                                            .arg(toMetric(ui->txtMPosY->text().toDouble()))
-                                            .arg(toMetric(ui->txtMPosZ->text().toDouble())), -1, m_settings->showUICommands());
+    sendCommand(QString("G53G90G0X%1Y%2Z%3").arg(toMetric(ui->txtMPosX->value()))
+                                            .arg(toMetric(ui->txtMPosY->value()))
+                                            .arg(toMetric(ui->txtMPosZ->value())), -1, m_settings->showUICommands());
     sendCommand(QString("G92X%1Y%2Z%3").arg(toMetric(ui->txtMPosX->text().toDouble()) - m_storedX)
                                         .arg(toMetric(ui->txtMPosY->text().toDouble()) - m_storedY)
                                         .arg(toMetric(ui->txtMPosZ->text().toDouble()) - m_storedZ), -1, m_settings->showUICommands());
@@ -2846,76 +2966,76 @@ bool frmMain::eventFilter(QObject *obj, QEvent *event)
         }
 
     // Splitter events
-    } else if (obj == ui->splitPanels && event->type() == QEvent::Resize) {
-        // Resize splited widgets
-        onPanelsSizeChanged(ui->scrollAreaWidgetContents->sizeHint());
+    // } else if (obj == ui->splitPanels && event->type() == QEvent::Resize) {
+    //     // Resize splited widgets
+    //     onPanelsSizeChanged(ui->scrollAreaWidgetContents->sizeHint());
 
-    // Splitter handle events
-    } else if (obj == ui->splitPanels->handle(1)) {
-        int minHeight = getConsoleMinHeight();
-        switch (event->type()) {
-        case QEvent::MouseButtonPress:
-            // Store current console group box minimum & real heights
-            m_storedConsoleMinimumHeight = ui->grpConsole->minimumHeight();
-            m_storedConsoleHeight = ui->grpConsole->height();
+    // // Splitter handle events
+    // } else if (obj == ui->splitPanels->handle(1)) {
+    //     int minHeight = getConsoleMinHeight();
+    //     switch (event->type()) {
+    //     case QEvent::MouseButtonPress:
+    //         // Store current console group box minimum & real heights
+    //         m_storedConsoleMinimumHeight = ui->grpConsole->minimumHeight();
+    //         m_storedConsoleHeight = ui->grpConsole->height();
 
-            // Update splited sizes
-            ui->splitPanels->setSizes(QList<int>() << ui->scrollArea->height() << ui->grpConsole->height());
+    //         // Update splited sizes
+    //         ui->splitPanels->setSizes(QList<int>() << ui->scrollArea->height() << ui->grpConsole->height());
 
-            // Set new console mimimum height
-            ui->grpConsole->setMinimumHeight(qMax(minHeight, ui->splitPanels->height()
-                - ui->scrollAreaWidgetContents->sizeHint().height() - ui->splitPanels->handleWidth() - 4));
-            break;
-        case QEvent::MouseButtonRelease:
-            // Store new console minimum height if height was changed with split handle
-            if (ui->grpConsole->height() != m_storedConsoleHeight) {
-                ui->grpConsole->setMinimumHeight(ui->grpConsole->height());
-            } else {
-                ui->grpConsole->setMinimumHeight(m_storedConsoleMinimumHeight);
-            }
-            break;
-        case QEvent::MouseButtonDblClick:
-            // Switch to min/max console size
-            if (ui->grpConsole->height() == minHeight || !ui->scrollArea->verticalScrollBar()->isVisible()) {
-                ui->splitPanels->setSizes(QList<int>() << ui->scrollArea->minimumHeight()
-                << ui->splitPanels->height() - ui->splitPanels->handleWidth() - ui->scrollArea->minimumHeight());
-            } else {
-                ui->grpConsole->setMinimumHeight(minHeight);
-                onPanelsSizeChanged(ui->scrollAreaWidgetContents->sizeHint());
-            }
-            break;
-        default:
-            break;
-        }
+    //         // Set new console mimimum height
+    //         ui->grpConsole->setMinimumHeight(qMax(minHeight, ui->splitPanels->height()
+    //             - ui->scrollAreaWidgetContents->sizeHint().height() - ui->splitPanels->handleWidth() - 4));
+    //         break;
+    //     case QEvent::MouseButtonRelease:
+    //         // Store new console minimum height if height was changed with split handle
+    //         if (ui->grpConsole->height() != m_storedConsoleHeight) {
+    //             ui->grpConsole->setMinimumHeight(ui->grpConsole->height());
+    //         } else {
+    //             ui->grpConsole->setMinimumHeight(m_storedConsoleMinimumHeight);
+    //         }
+    //         break;
+    //     case QEvent::MouseButtonDblClick:
+    //         // Switch to min/max console size
+    //         if (ui->grpConsole->height() == minHeight || !ui->scrollArea->verticalScrollBar()->isVisible()) {
+    //             ui->splitPanels->setSizes(QList<int>() << ui->scrollArea->minimumHeight()
+    //             << ui->splitPanels->height() - ui->splitPanels->handleWidth() - ui->scrollArea->minimumHeight());
+    //         } else {
+    //             ui->grpConsole->setMinimumHeight(minHeight);
+    //             onPanelsSizeChanged(ui->scrollAreaWidgetContents->sizeHint());
+    //         }
+    //         break;
+    //     default:
+    //         break;
+    //     }
     }
 
     return QMainWindow::eventFilter(obj, event);
 }
 
-int frmMain::getConsoleMinHeight()
-{
-    return ui->grpConsole->height() - ui->grpConsole->contentsRect().height()
-            + ui->spacerConsole->geometry().height() + ui->grpConsole->layout()->margin() * 2
-            + ui->cboCommand->height();
-}
+// int frmMain::getConsoleMinHeight()
+// {
+//     return ui->grpConsole->height() - ui->grpConsole->contentsRect().height()
+//             + ui->spacerConsole->geometry().height() + ui->grpConsole->layout()->margin() * 2
+//             + ui->cboCommand->height();
+// }
 
-void frmMain::onConsoleResized(QSize size)
-{
-    Q_UNUSED(size)
+// void frmMain::onConsoleResized(QSize size)
+// {
+//     Q_UNUSED(size)
 
-    int minHeight = getConsoleMinHeight();
-    bool visible = ui->grpConsole->height() > minHeight;
-    if (ui->txtConsole->isVisible() != visible) {
-        ui->txtConsole->setVisible(visible);
-    }
-}
+//     int minHeight = getConsoleMinHeight();
+//     bool visible = ui->grpConsole->height() > minHeight;
+//     if (ui->txtConsole->isVisible() != visible) {
+//         ui->txtConsole->setVisible(visible);
+//     }
+// }
 
-void frmMain::onPanelsSizeChanged(QSize size)
-{
-    ui->splitPanels->setSizes(QList<int>() << size.height() + 4
-                              << ui->splitPanels->height() - size.height()
-                              - 4 - ui->splitPanels->handleWidth());
-}
+// void frmMain::onPanelsSizeChanged(QSize size)
+// {
+//     ui->splitPanels->setSizes(QList<int>() << size.height() + 4
+//                               << ui->splitPanels->height() - size.height()
+//                               - 4 - ui->splitPanels->handleWidth());
+// }
 
 bool frmMain::keyIsMovement(int key)
 {
@@ -2975,26 +3095,26 @@ void frmMain::on_tblProgram_customContextMenuRequested(const QPoint &pos)
     m_tableMenu->popup(ui->tblProgram->viewport()->mapToGlobal(pos));
 }
 
-void frmMain::on_splitter_splitterMoved(int pos, int index)
-{
-    Q_UNUSED(pos)
-    Q_UNUSED(index)
+// void frmMain::on_splitter_splitterMoved(int pos, int index)
+// {
+//     Q_UNUSED(pos)
+//     Q_UNUSED(index)
 
-    static bool tableCollapsed = ui->splitter->sizes()[1] == 0;
+//     static bool tableCollapsed = ui->splitter->sizes()[1] == 0;
 
-    if ((ui->splitter->sizes()[1] == 0) != tableCollapsed) {
-        this->setUpdatesEnabled(false);
-        ui->chkAutoScroll->setVisible(ui->splitter->sizes()[1] && !m_heightMapMode);
-        updateLayouts();
-        resizeCheckBoxes();
+//     if ((ui->splitter->sizes()[1] == 0) != tableCollapsed) {
+//         this->setUpdatesEnabled(false);
+//         ui->chkAutoScroll->setVisible(ui->splitter->sizes()[1] && !m_heightMapMode);
+//         updateLayouts();
+//         resizeCheckBoxes();
 
-        this->setUpdatesEnabled(true);
-        ui->chkAutoScroll->repaint();
+//         this->setUpdatesEnabled(true);
+//         ui->chkAutoScroll->repaint();
 
-        // Store collapsed state
-        tableCollapsed = ui->splitter->sizes()[1] == 0;
-    }
-}
+//         // Store collapsed state
+//         tableCollapsed = ui->splitter->sizes()[1] == 0;
+//     }
+// }
 
 void frmMain::updateLayouts()
 {
@@ -3790,7 +3910,8 @@ QList<LineSegment*> frmMain::subdivideSegment(LineSegment* segment)
     }
 
     QVector3D seg = vec.normalized() * length;
-    int count = trunc(vec.length() / length);
+    // int count = trunc(vec.length() / length);
+    int count = (vec.length() / length);
 
     if (count == 0) return QList<LineSegment*>();
 
@@ -3851,6 +3972,11 @@ void frmMain::onOverridingToggled(bool checked)
                                    || ui->slbRapidOverride->isChecked() || ui->slbSpindleOverride->isChecked());
     style()->unpolish(ui->grpOverriding);
     ui->grpOverriding->ensurePolished();
+}
+
+void frmMain::onOverrideChanged()
+{
+    updateProgramEstimatedTime(m_currentDrawer->viewParser()->getLineSegmentList());
 }
 
 void frmMain::updateOverride(SliderBox *slider, int value, char command)
