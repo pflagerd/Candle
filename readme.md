@@ -45,17 +45,15 @@ To build Experimental:
   `sudo apt-get install -y cmake g++ make qtbase5-dev qtscript5-dev qttools5-dev qttools5-dev-tools libqt5serialport5-dev libqt5opengl5-dev qtmultimedia5-dev libqt5multimediawidgets5 libqt5multimedia5-plugins libqt5multimedia5 libqt5designercomponents5 libqt5designer5 qtcreator`  
 
 - Clone Candle
-  ```git clone https://github.com/pflagerd/Candle.git```
+  ```git clone https://github.com/pflagerd/candle.git```
 
 - Build Candle
 
-  `# Please don't be alarmed by warnings during the build.`
+  `cd candle`
 
-  `cd candle`/src
+  `cmake .`
 
-  `qmake`
-
-  `make`
+  `make -j 16`
 
 * The last lines of the successful build should look something like this:
 
@@ -67,8 +65,8 @@ To build Experimental:
   ````
 
 - Launch Candle
-  `./Candle`
+  `./candle`
 
 * You should see something like this:
 
-  ![image-20230427121146237](screenshots/image-20230427121146237.png)
+

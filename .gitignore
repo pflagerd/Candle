@@ -10,3 +10,4 @@ qrc_shaders.cpp
 /.qmake.stash
 /CMakeCache.txt
 /Makefile
+*.kate-swp
