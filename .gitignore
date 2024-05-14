@@ -11,3 +11,4 @@ qrc_shaders.cpp
 /CMakeCache.txt
 /Makefile
 *.kate-swp
+.idea/
