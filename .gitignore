@@ -1,3 +1,12 @@
 /candle
 /.qtc_clangd/
 /settings.ini
+*.o
+ui*.h
+moc*.*
+qrc_images.cpp
+qrc_shaders.cpp
+/CMakeFiles
+/.qmake.stash
+/CMakeCache.txt
+/Makefile
