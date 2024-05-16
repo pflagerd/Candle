@@ -4,8 +4,8 @@ project(candle)
 set(CMAKE_CXX_STANDARD 17)
 
 add_custom_target(
-        BuildAndInstall ALL
-        COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR} qmake
+        candle ALL
+        COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR} qmake CONFIG+=debug
         COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR} make
         COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR} make install
 )
@@ -13,4 +13,4 @@ add_custom_target(
 # If you want the target to be the default target when typing 'make',
 # you can set it to be the default build target:
 
-set_directory_properties(PROPERTIES DEFAULT_TARGET BuildAndInstall)
+set_directory_properties(PROPERTIES DEFAULT_TARGET candle)

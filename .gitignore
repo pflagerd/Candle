@@ -12,3 +12,4 @@ qrc_shaders.cpp
 /Makefile
 *.kate-swp
 .idea/
+/cmake-build-debug/
