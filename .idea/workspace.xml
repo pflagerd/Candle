@@ -21,12 +21,8 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0ea6d120-a3ab-4be1-ad3b-d33884a436bb" name="Changes" comment="progress">
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+    <list default="true" id="0ea6d120-a3ab-4be1-ad3b-d33884a436bb" name="Changes" comment="Added BuildAndRun Target.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/readme.md" beforeDir="false" afterPath="$PROJECT_DIR$/readme.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/settings.ini" beforeDir="false" afterPath="$PROJECT_DIR$/src/settings.ini" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -64,6 +60,7 @@
   "keyToString": {
     "ASKED_ADD_EXTERNAL_FILES": "true",
     "CMake Application.BuildAndInstall.executor": "Run",
+    "CMake Application.BuildAndRun.executor": "Run",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.cidr.known.project.marker": "true",
@@ -72,7 +69,7 @@
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
     "git-widget-placeholder": "master",
-    "last_opened_file_path": "/home/oy753c/desktops/neon-candle/candle",
+    "last_opened_file_path": "/home/oy753c/desktops/neon-candle/candle2",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -115,7 +112,7 @@
       <workItem from="1693535670095" duration="14000" />
       <workItem from="1693535691145" duration="895000" />
       <workItem from="1693536648701" duration="28000" />
-      <workItem from="1725309834350" duration="1532000" />
+      <workItem from="1725309834350" duration="2111000" />
     </task>
     <task id="LOCAL-00001" summary="progress">
       <option name="closed" value="true" />
@@ -141,7 +138,15 @@
       <option name="project" value="LOCAL" />
       <updated>1693517546789</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Added BuildAndRun Target.">
+      <option name="closed" value="true" />
+      <created>1725315989218</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1725315989218</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -155,6 +160,7 @@
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
     <MESSAGE value="progress" />
-    <option name="LAST_COMMIT_MESSAGE" value="progress" />
+    <MESSAGE value="Added BuildAndRun Target." />
+    <option name="LAST_COMMIT_MESSAGE" value="Added BuildAndRun Target." />
   </component>
 </project>
